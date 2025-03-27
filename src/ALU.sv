@@ -21,9 +21,9 @@ module ALU (
         4'b1001: ALUResult = (A < B) ? 32'b1 : 32'b0; // SLTU
         4'b1010: ALUResult = (A == B) ? 32'b1 : 32'b0; // for BEQ
         4'b1011: ALUResult = (A != B) ? 32'b1 : 32'b0; // for BNE
-        4'b1100: ALUResult = ($signed(A) >= $signed(B)) ? 32'b1 : 32'b0; // for BGT
-        4'b1101: ALUResult = (A >= B) ? 32'b1 : 32'b0; // for BGTU
-        4'b1110: ALUResult = A + 4; // Increment by 4 for PC+4 (JALR)
+        4'b1100: ALUResult = ($signed(A) >= $signed(B)) ? 32'b1 : 32'b0; // for BGE
+        4'b1101: ALUResult = (A >= B) ? 32'b1 : 32'b0; // for BGEU
+        4'b1110: ALUResult = A + 4; // Increment by 4 for PC+4 (JAL/R)
         4'b1111: ALUResult = B; // Pass through B, for LUI
         endcase
     end

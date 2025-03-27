@@ -1020,54 +1020,6 @@ package riscv_pkg;
     localparam F7_OR   = 7'b0000000;
     localparam F7_AND  = 7'b0000000;
 
-    typedef struct packed { 
-      logic [XLEN-1:0] data;
-      logic [4:1] addr;
-      logic valid;
-    } rd_port_t;
-
-    
-  typedef enum logic [5:0] {
-    LUI,
-    AUIPC,
-    JAL,
-    JALR,
-    BEQ,
-    BNE,
-    BLT,
-    BGE,
-    BLTU,
-    BGEU,
-    LB,
-    LH,
-    LW,
-    LBU,
-    LHU,
-    SB,
-    SH,
-    SW,
-    ADDI,
-    SLTI,
-    SLTIU,
-    XORI,
-    ORI,
-    ANDI,
-    SLLI,
-    SRLI,
-    SRAI,
-    ADD,
-    SUB,
-    SLL,
-    SLT,
-    SLTU,
-    XOR,
-    SRL,
-    SRA,
-    OR,
-    AND,
-    UNKNOWN
-  } operation_e;
-
   // trace log compatible to spikes commit log feature
   // pragma translate_off
   function string spikeCommitLog(logic [63:0] pc, priv_lvl_t priv_lvl, logic [31:0] instr,

@@ -7,7 +7,7 @@ module riscv_singlecycle #(
 )(
     input  logic             clk_i,       // system clock
     input  logic             rstn_i,      // system reset
-    input  logic  [XLEN-1:0] addr_i,      // instruction memory ??? adddres input for reading
+    input  logic  [XLEN-1:0] addr_i,      // instruction memory ??? adddres input for reading (why is it input???)
     output logic  [XLEN-1:0] data_o,      // instruction memory ??? data output for reading
     output logic             update_o,    // retire signal
     output logic  [XLEN-1:0] pc_o,        // retired program counter
@@ -19,10 +19,10 @@ module riscv_singlecycle #(
 );
     parameter MEM_SIZE = 2048;
     logic [31:0]     imem [MEM_SIZE-1:0];
-    initial $readmemh("../test/test.hex", imem, 0, MEM_SIZE);
+    initial $readmemh("./test/test.hex", imem, 0, MEM_SIZE); //Must be launched from the root directory, which is where the makefile is
     logic [31:0]     instr_i;
 
-    assign instr_i = imem[addr_i];
+    assign instr_i = imem[pc_out >> 2]; //Since the instruction memory is word-addressed, we need to shift the PC by 2 to get the correct index
     //assign addr_i = pc_o; //I don't know what to do with this
     assign data_o = instr_i;
     assign instr_o = instr_i; //Since this is single cycle and in-order, the instruction is retired in the same cycle it is fetched
@@ -122,14 +122,12 @@ module riscv_singlecycle #(
         .data_wmask(wmask_out)
     );
     
-    assign mem_data_o = data_out_mem;
-    assign mem_addr_o = alu_out;
-    assign reg_data_o = data_rd;
-    assign reg_addr_o = ctrl_rd;
+    assign mem_data_o = {32{ctrl_we}} & data_out_mem; //Return this value only if the write is valid
+    assign mem_addr_o = {32{ctrl_we}} & alu_out;
+    assign reg_data_o = {32{ctrl_rf_we}} & data_rd;
+    assign reg_addr_o = {5{ctrl_rf_we}} & ctrl_rd;
     assign pc_o = pc_out;
 
-    initial
-        $readmemh(DMemInitFile, dmem.memory, 0, MEM_SIZE);
 
     assign update_o = ~clk_i; //I don't know how correct this is
 endmodule

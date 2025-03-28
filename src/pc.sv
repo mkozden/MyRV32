@@ -2,7 +2,7 @@ module PC (
     input logic clk,
     input logic rst,
     input logic [31:0] PC_in,
-    input logic [31:0] PC_out
+    output logic [31:0] PC_out
 );
     //Increment, and offset additions are done in the ALU
     logic [31:0] PC;

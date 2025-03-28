@@ -22,20 +22,20 @@ module register_file (
     end
     always_comb begin
         if (!rst) begin
-            data_rs1 <= 32'h0;
-            data_rs2 <= 32'h0;
+            data_rs1 = 32'h0;
+            data_rs2 = 32'h0;
         end 
         else begin
             if(rs1 == 0) begin
-                data_rs1 <= 32'h0;           //Read data 1 is 0 if source register 1 is 0
+                data_rs1 = 32'h0;           //Read data 1 is 0 if source register 1 is 0
             end else begin
-                data_rs1 <= register_file[rs1];  //Read data 1 is the value in source register 1
+                data_rs1 = register_file[rs1];  //Read data 1 is the value in source register 1
             end
 
             if(rs2 == 0) begin
-                data_rs2 <= 32'h0;           //Read data 2 is 0 if source register 2 is 0
+                data_rs2 = 32'h0;           //Read data 2 is 0 if source register 2 is 0
             end else begin
-                data_rs2 <= register_file[rs2];  //Read data 2 is the value in source register 2
+                data_rs2 = register_file[rs2];  //Read data 2 is the value in source register 2
             end
         end
     end

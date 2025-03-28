@@ -1,3 +1,4 @@
+//`include "../src/pkg/riscv_pkg.sv"
 module tb ();
   logic [riscv_pkg::XLEN-1:0] addr;
   logic [riscv_pkg::XLEN-1:0] data;
@@ -9,16 +10,19 @@ module tb ();
   logic                       clk;
   logic                       rstn;
 
-  core_model i_core_model (
+  riscv_singlecycle i_core_model (
       .clk_i(clk),
       .rstn_i(rstn),
-      .addr_i(addr),
+      .addr_i(),
       .update_o(update),
-      .data_o(data),
+      .data_o(),
       .pc_o(pc),
       .instr_o(instr),
       .reg_addr_o(reg_addr),
-      .reg_data_o(reg_data)
+      .reg_data_o(reg_data),
+      .mem_addr_o(addr),
+      .mem_data_o(data)
+
 
   );
   integer file_pointer;

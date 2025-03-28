@@ -14,34 +14,34 @@ module LS_Unit (
     always_comb begin
         case(data_size)
         3'b000: begin //Byte (signed)
-            data_out_rf <=  {{24{data_in_mem[7]}}, data_in_mem[7:0]};
-            data_out_mem <=  {{24{data_in[7]}}, data_in[7:0]};
-            wmask_out <= 4'b1;
+            data_out_rf = {{24{data_in_mem[7]}}, data_in_mem[7:0]};
+            data_out_mem = {{24{data_in[7]}}, data_in[7:0]};
+            wmask_out = 4'b1;
         end
         3'b001: begin //Halfword (signed)
-            data_out_rf <=  {{16{data_in_mem[15]}}, data_in_mem[15:0]};
-            data_out_mem <=  {{16{data_in[15]}}, data_in[15:0]};
-            wmask_out <= 4'b11;
+            data_out_rf = {{16{data_in_mem[15]}}, data_in_mem[15:0]};
+            data_out_mem = {{16{data_in[15]}}, data_in[15:0]};
+            wmask_out = 4'b11;
         end
         3'b010: begin //Word (signed)
-            data_out_rf <=  data_in_mem;
-            data_out_mem <=  data_in;
-            wmask_out <= 4'b1111;
+            data_out_rf = data_in_mem;
+            data_out_mem = data_in;
+            wmask_out = 4'b1111;
         end
         3'b100: begin //Byte (unsigned)
-            data_out_rf <=  {{24{1'b0}}, data_in_mem[7:0]};
-            data_out_mem <=  {{24{1'b0}}, data_in[7:0]};
-            wmask_out <= 4'b1;
+            data_out_rf = {{24{1'b0}}, data_in_mem[7:0]};
+            data_out_mem = {{24{1'b0}}, data_in[7:0]};
+            wmask_out = 4'b1;
         end
         3'b101: begin //Halfword (unsigned)
-            data_out_rf <=  {{16{1'b0}}, data_in_mem[15:0]};
-            data_out_mem <=  {{16{1'b0}}, data_in[15:0]};
-            wmask_out <= 4'b11;
+            data_out_rf = {{16{1'b0}}, data_in_mem[15:0]};
+            data_out_mem = {{16{1'b0}}, data_in[15:0]};
+            wmask_out = 4'b11;
         end
         default: begin
-            data_out_rf <=  data_in_mem;
-            data_out_mem <=  data_in;
-            wmask_out <= 4'b1111;
+            data_out_rf = data_in_mem;
+            data_out_mem = data_in;
+            wmask_out = 4'b1111;
         end
         endcase
     end

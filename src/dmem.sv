@@ -1,5 +1,7 @@
 //Allows read/writes to memory of different data sizes, like word, halfword, and byte
-module dmem (
+module dmem #(
+    parameter MEM_SIZE = 1024
+)(
     input logic clk,
     input logic rst,
     input logic [31:0] addr,                //Address input
@@ -8,7 +10,6 @@ module dmem (
     input logic we,                         //Write enable
     output logic [31:0] data_out            //Data going out
 );
-    parameter MEM_SIZE = 1024;
     logic [31:0] memory [MEM_SIZE-1:0]; //1024 words of memory
 
     always_ff @(posedge clk) begin

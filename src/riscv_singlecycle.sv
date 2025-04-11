@@ -15,12 +15,14 @@ module riscv_singlecycle #(
     output logic  [XLEN-1:0] instr_o,     // retired instruction
     output logic  [     4:0] reg_addr_o,  // retired register address
     output logic  [XLEN-1:0] reg_data_o,  // retired register data
-    output logic  [XLEN-1:0] mem_addr_o,  // retired memory address (why duplicate?)
-    output logic  [XLEN-1:0] mem_data_o  // retired memory data
+    output logic  [XLEN-1:0] mem_addr_o,  // retired memory address
+    output logic  [XLEN-1:0] mem_data_o,  // retired memory data
+    output logic             mem_wrt_o   // retired memory write enable signal
 );
+    parameter START_ADDR = 32'h8000_0000;
     parameter MEM_SIZE = 2048;
     logic [31:0]     imem [MEM_SIZE-1:0];
-    initial $readmemh("./test/test2/test2.hex", imem, 0, MEM_SIZE-1); //Must be launched from the root directory, which is where the makefile is
+    initial $readmemh(IMemInitFile, imem, 0, MEM_SIZE-1); //Must be in the root directory, which is where the makefile is
     logic [31:0]     instr_i;
     assign instr_i = imem[pc_out >> 2]; //Since the instruction memory is word-addressed, we need to shift the PC by 2 to get the correct index
     assign instr_o = instr_i; //Since this is single cycle and in-order, the instruction is retired in the same cycle it is fetched
@@ -90,7 +92,7 @@ module riscv_singlecycle #(
     assign alu_in_A = (ctrl_ALU_sel_A) ? pc_out : data_rs1;
     assign alu_in_B = (ctrl_ALU_sel_B) ? ctrl_imm : data_rs2;
 
-    PC programcounter (
+    PC #(.START_ADDR(START_ADDR)) programcounter ( //So that the program counter starts at 0x8000_0000
         .clk(clk_i),
         .rst(rstn_i),
         .PC_in(pc_in),
@@ -119,13 +121,15 @@ module riscv_singlecycle #(
         .data_out(data_in_mem),
         .data_wmask(wmask_out)
     );
-    
-    assign mem_data_o = data_out_mem;
-    assign mem_addr_o = alu_out;
+    initial $readmemh(DMemInitFile, dmem.memory, 0, MEM_SIZE-1); //Must be in the root directory, which is where the makefile is
+
+    assign mem_data_o = {32{ctrl_we}} & data_out_mem; //Return this only if memory is being written to
+    assign mem_addr_o = {32{ctrl_we}} & alu_out;
+    assign mem_wrt_o = ctrl_we;
     assign reg_data_o = {32{ctrl_rf_we}} & data_rd; //Return this only if the register file is being written to
     assign reg_addr_o = {5{ctrl_rf_we}} & ctrl_rd;
     assign pc_o = pc_out;
 
-    assign data_o = dmem.memory[addr_i >> 2]; //I believe this is what the testbench does
+    assign data_o = dmem.memory[addr_i>>2]; //I believe this is what the testbench does
     assign update_o = ~clk_i; //I don't know how correct this is
 endmodule

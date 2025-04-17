@@ -12,7 +12,7 @@ module tb ();
   logic                       clk;
   logic                       rstn;
 
-  riscv_singlecycle i_core_model (
+  riscv_multicycle i_core_model (
       .clk_i(clk),
       .rstn_i(rstn),
       .addr_i(addr),
@@ -64,8 +64,8 @@ module tb ();
     #10000;
     for (logic [31:0] i = 32'h8000_0000; i < 32'h8000_0000 + 'h20; i = i + 4) begin
       addr = i;
+      #0;//This is required, even though the memory read is asynchronous
       $display("data @ mem[0x%8h] = %8h", addr, data);
-      #1; //This is required, even though the memory read is asynchronous
     end
     $finish;
   end

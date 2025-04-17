@@ -36,4 +36,13 @@ module dmem #(
             data_out = 32'b0; //If we are writing, we don't care about the output
         end
     end
+    logic [31:0] a0,a4,a8,aA,aC,a10,a14; //Debug memory signals
+    assign a0 = memory[0];
+    assign a4 = memory[1];
+    assign a8 = memory[2];
+    assign aA = memory[3];
+    assign aC = memory[4];
+    assign a10 = memory[5];
+    assign a14 = memory[6];
+
 endmodule

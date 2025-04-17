@@ -68,8 +68,8 @@ module control_unit (
             WB_sel = 1'b0;                          //Write from ALU result
             JALR_sel = 1'b0;                        //Only relevant for JAL/JALR/Branches
             data_size = 3'b000;                     //No memory writes or reads so data size is irrelevant
-            imm = {instr_i[31:12], 12'b0};            //Use upper 20-bits as immediate, 0 for lower 12-bits
-            ALUControl = 5'b01111;                   //Directly use B as ALU result
+            imm = {instr_i[31:12], 12'b0};          //Use upper 20-bits as immediate, 0 for lower 12-bits
+            ALUControl = 5'b01111;                  //Directly use B as ALU result
         end
         OpcodeAuipc:begin
             B = 1'b0;                               //No branching

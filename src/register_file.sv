@@ -12,7 +12,7 @@ module register_file (
     logic [31:0] register_file [31:1];  //31 registers, each 32 bits wide (0th register is always 0)
     integer i;
     
-    always_ff @(posedge clk or negedge rst) begin
+    always_ff @(negedge clk or negedge rst) begin //Writing on negative edge of clock prevents pipeline hazard
         if(!rst) begin
             for(i = 1; i < 32; i++)
                 register_file[i] <= 32'h0;

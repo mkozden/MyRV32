@@ -37,3 +37,34 @@ nop
 nop
 nop
 nop
+
+# Pipeline flush and branch test
+addi x11, x0, 5
+j skip_target
+addi x12, x0, 10
+addi x13, x0, 20
+skip_target:
+addi x14, x0, 30
+addi x15, x0, 40
+
+nop
+nop
+nop
+nop
+nop
+
+# Forwarding test, data dependencies that can be resolved
+addi x16, x0, 0x10
+addi x17, x16, 0x10
+addi x18, x17, 0x10
+nop
+addi x19, x18, 0x10 #Should forward from WB
+#In the end we expect to see 0x10, 0x20, 0x30 and 0x40 in x16, x17, x18 and x19 respectively
+nop
+
+addi x20, x0, 0x5
+addi x20, x0, 0x10
+addi x21, x20, 0x10 #This should return 0x20, not 0x15
+nop
+nop
+addi x22, x21, 0x5 #This should return 0x25, not 0x5 (IF RF is not neg-edge triggered, this comes out wrong)

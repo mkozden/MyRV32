@@ -46,7 +46,7 @@ module riscv_multicycle #(
     //Will be modified with the appropriate pipelined signals, then moved to the proper stage (Branch target is calculated in EX stage for example)
     assign take_branch      = (EX_B & EX_alu_out[0]) | EX_J;
     assign branch_target    = (EX_JALR_sel) ? EX_data_rs1 + EX_imm : EX_pc + EX_imm;
-    assign pc_in            = (take_branch) ? branch_target : pc_out + 4; //This is kept the same?
+    assign pc_in            = (take_branch) ? branch_target : (IF_ID_stall) ? pc_out : pc_out + 4; //If stall is sent, don't increment the PC, just hold the previous value
 
     //Pipeline registers
     reg [31:0] IF_ID_reg_pc;
@@ -54,21 +54,28 @@ module riscv_multicycle #(
 
     logic IF_ID_flush;
     logic IF_ID_stall;
+    logic IF_ID_isflushed;
 
     //Pipeline register assignments
     always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
             IF_ID_reg_pc        <= 0;
             IF_ID_reg_instr     <= 0;
+
+            IF_ID_isflushed     <= 0;
         end else if (IF_ID_flush) begin
             IF_ID_reg_pc        <= 32'h0;
             IF_ID_reg_instr     <= 32'h0000_0013; //NOP instruction
+
+            IF_ID_isflushed     <= 1; //Set the flush flag to 1
         end else if (IF_ID_stall) begin
             IF_ID_reg_pc        <= IF_ID_reg_pc; //Hold the previous value (is this synthesizable?)    ***MIGHT NEED TO COMBINE FLUSH AND STALL LOGIC, AND JUST FLUSH***
             IF_ID_reg_instr     <= IF_ID_reg_instr;
         end else begin
             IF_ID_reg_pc        <= pc_out;
             IF_ID_reg_instr     <= instr_i;
+
+            IF_ID_isflushed     <= 0;
         end
     end
 
@@ -145,10 +152,32 @@ module riscv_multicycle #(
     
     logic ID_EX_flush;
     logic ID_EX_stall;
+    logic ID_EX_isflushed;
 
     //Pipeline register assignments
     always_ff @(posedge clk_i or negedge rstn_i) begin
         if (!rstn_i) begin
+            ID_EX_reg_instr         <= 0; //NOP
+            ID_EX_reg_pc            <= 0;
+            ID_EX_reg_rs1           <= 0;
+            ID_EX_reg_rs2           <= 0;
+            ID_EX_reg_rd            <= 0;
+            ID_EX_reg_imm           <= 0;
+            ID_EX_reg_data_rs1      <= 0;
+            ID_EX_reg_data_rs2      <= 0;
+            ID_EX_reg_ALUControl    <= 0;
+            ID_EX_reg_B             <= 0;
+            ID_EX_reg_J             <= 0;
+            ID_EX_reg_we            <= 0;
+            ID_EX_reg_rf_we         <= 0;
+            ID_EX_reg_ALU_sel_A     <= 0;
+            ID_EX_reg_ALU_sel_B     <= 0;
+            ID_EX_reg_data_size     <= 0;
+            ID_EX_reg_WB_sel        <= 0;
+            ID_EX_reg_JALR_sel      <= 0; //Not sure if this is needed
+
+            ID_EX_isflushed         <= 0;
+        end else if (ID_EX_flush || ID_EX_stall) begin //Insert a NOP in the pipeline
             ID_EX_reg_instr         <= 32'h0000_0013; //NOP
             ID_EX_reg_pc            <= 0;
             ID_EX_reg_rs1           <= 0;
@@ -167,44 +196,27 @@ module riscv_multicycle #(
             ID_EX_reg_data_size     <= 0;
             ID_EX_reg_WB_sel        <= 0;
             ID_EX_reg_JALR_sel      <= 0; //Not sure if this is needed
-        end else if (ID_EX_flush) begin //Basically the same as reset, let's still keep it
-            ID_EX_reg_instr         <= 32'h0000_0013; //NOP
-            ID_EX_reg_pc            <= 0;
-            ID_EX_reg_rs1           <= 0;
-            ID_EX_reg_rs2           <= 0;
-            ID_EX_reg_rd            <= 0;
-            ID_EX_reg_imm           <= 0;
-            ID_EX_reg_data_rs1      <= 0;
-            ID_EX_reg_data_rs2      <= 0;
-            ID_EX_reg_ALUControl    <= 0;
-            ID_EX_reg_B             <= 0;
-            ID_EX_reg_J             <= 0;
-            ID_EX_reg_we            <= 0;
-            ID_EX_reg_rf_we         <= 0;
-            ID_EX_reg_ALU_sel_A     <= 0;
-            ID_EX_reg_ALU_sel_B     <= 0;
-            ID_EX_reg_data_size     <= 0;
-            ID_EX_reg_WB_sel        <= 0;
-            ID_EX_reg_JALR_sel      <= 0; //Not sure if this is needed
-        end else if (ID_EX_stall) begin
-            ID_EX_reg_instr         <= ID_EX_reg_instr; //Hold the previous value (is this synthesizable?)
-            ID_EX_reg_pc            <= ID_EX_reg_pc;
-            ID_EX_reg_rs1           <= ID_EX_reg_rs1;
-            ID_EX_reg_rs2           <= ID_EX_reg_rs2;
-            ID_EX_reg_rd            <= ID_EX_reg_rd;
-            ID_EX_reg_imm           <= ID_EX_reg_imm;
-            ID_EX_reg_data_rs1      <= ID_EX_reg_data_rs1;
-            ID_EX_reg_data_rs2      <= ID_EX_reg_data_rs2;
-            ID_EX_reg_ALUControl    <= ID_EX_reg_ALUControl;
-            ID_EX_reg_B             <= ID_EX_reg_B;    //Not sure if this is needed
-            ID_EX_reg_J             <= ID_EX_reg_J;    //Not sure if this is needed
-            ID_EX_reg_we            <= ID_EX_reg_we;
-            ID_EX_reg_rf_we         <= ID_EX_reg_rf_we;
-            ID_EX_reg_ALU_sel_A     <= ID_EX_reg_ALU_sel_A;
-            ID_EX_reg_ALU_sel_B     <= ID_EX_reg_ALU_sel_B;
-            ID_EX_reg_data_size     <= ID_EX_reg_data_size;
-            ID_EX_reg_WB_sel        <= ID_EX_reg_WB_sel;
-            ID_EX_reg_JALR_sel      <= ID_EX_reg_JALR_sel; //Not sure if this is needed
+
+            ID_EX_isflushed         <= 1; //Set the flush flag to 1
+        // end else if (ID_EX_stall) begin
+        //     ID_EX_reg_instr         <= ID_EX_reg_instr; //Hold the previous value (is this synthesizable?)
+        //     ID_EX_reg_pc            <= ID_EX_reg_pc;
+        //     ID_EX_reg_rs1           <= ID_EX_reg_rs1;
+        //     ID_EX_reg_rs2           <= ID_EX_reg_rs2;
+        //     ID_EX_reg_rd            <= ID_EX_reg_rd;
+        //     ID_EX_reg_imm           <= ID_EX_reg_imm;
+        //     ID_EX_reg_data_rs1      <= ID_EX_reg_data_rs1;
+        //     ID_EX_reg_data_rs2      <= ID_EX_reg_data_rs2;
+        //     ID_EX_reg_ALUControl    <= ID_EX_reg_ALUControl;
+        //     ID_EX_reg_B             <= ID_EX_reg_B;    //Not sure if this is needed
+        //     ID_EX_reg_J             <= ID_EX_reg_J;    //Not sure if this is needed
+        //     ID_EX_reg_we            <= ID_EX_reg_we;
+        //     ID_EX_reg_rf_we         <= ID_EX_reg_rf_we;
+        //     ID_EX_reg_ALU_sel_A     <= ID_EX_reg_ALU_sel_A;
+        //     ID_EX_reg_ALU_sel_B     <= ID_EX_reg_ALU_sel_B;
+        //     ID_EX_reg_data_size     <= ID_EX_reg_data_size;
+        //     ID_EX_reg_WB_sel        <= ID_EX_reg_WB_sel;
+        //     ID_EX_reg_JALR_sel      <= ID_EX_reg_JALR_sel; //Not sure if this is needed
         end else begin
             ID_EX_reg_instr         <= ID_instr;
             ID_EX_reg_pc            <= IF_ID_reg_pc;
@@ -223,12 +235,15 @@ module riscv_multicycle #(
             ID_EX_reg_ALU_sel_B     <= ctrl_ALU_sel_B;
             ID_EX_reg_data_size     <= ctrl_data_size;
             ID_EX_reg_WB_sel        <= ctrl_WB_sel;
+
+            ID_EX_isflushed         <= IF_ID_isflushed;
         end
     end
 // EXECUTE (EX) STAGE
     //Stage internal signals, instantiations and assignments (and those that come from the previous stage)
     logic [31:0] alu_in_A, alu_in_B;                //ALU operand signals
     logic [31:0] EX_data_rs1, EX_data_rs2;          //Data signals from the previous stage
+    logic [4:0] EX_rs1, EX_rs2, EX_rd;
     logic [31:0] EX_imm;
     logic [31:0] EX_pc;
     logic [31:0] EX_alu_out;                        //ALU output
@@ -241,6 +256,9 @@ module riscv_multicycle #(
 
     assign EX_data_rs1     = ID_EX_reg_data_rs1;
     assign EX_data_rs2     = ID_EX_reg_data_rs2;
+    assign EX_rs1          = ID_EX_reg_rs1;
+    assign EX_rs2          = ID_EX_reg_rs2;
+    assign EX_rd           = ID_EX_reg_rd;
     assign EX_ALUControl   = ID_EX_reg_ALUControl;
     assign EX_ALU_sel_A    = ID_EX_reg_ALU_sel_A;
     assign EX_ALU_sel_B    = ID_EX_reg_ALU_sel_B;
@@ -259,8 +277,15 @@ module riscv_multicycle #(
         .ALUResult(EX_alu_out)
     );
 
-    assign alu_in_A     = (EX_ALU_sel_A) ? EX_pc : EX_data_rs1;
-    assign alu_in_B     = (EX_ALU_sel_B) ? EX_imm : EX_data_rs2;
+    //Forwarding logic (for ALU inputs)
+    logic [1:0] alu_in_A_fwd, alu_in_B_fwd; //Forwarding signals for ALU inputs
+    logic [31:0] data_rs1_fwd, data_rs2_fwd; //Forwarded data signal mux
+
+    assign data_rs1_fwd = (alu_in_A_fwd == 2'b01) ? MEM_alu_out : (alu_in_A_fwd == 2'b10) ? WB_data_rd : EX_data_rs1;
+    assign data_rs2_fwd = (alu_in_B_fwd == 2'b01) ? MEM_alu_out : (alu_in_B_fwd == 2'b10) ? WB_data_rd : EX_data_rs2;
+
+    assign alu_in_A     = (EX_ALU_sel_A) ? EX_pc : data_rs1_fwd;
+    assign alu_in_B     = (EX_ALU_sel_B) ? EX_imm : data_rs2_fwd;
 
     //Pipeline registers
     reg [31:0] EX_MEM_reg_instr; //To obtain the retired instruction at the end of the pipeline
@@ -278,11 +303,12 @@ module riscv_multicycle #(
 
     logic EX_MEM_flush;
     logic EX_MEM_stall;
+    logic EX_MEM_isflushed;
 
     //Pipeline register assignments
     always_ff @(posedge clk_i or negedge rstn_i) begin
         if(!rstn_i) begin
-            EX_MEM_reg_instr         <= 32'h0000_0013; //NOP
+            EX_MEM_reg_instr         <= 0; //NOP
             EX_MEM_reg_pc            <= 0;
             EX_MEM_reg_rd            <= 0;
             EX_MEM_reg_alu_out       <= 0;
@@ -291,6 +317,8 @@ module riscv_multicycle #(
             EX_MEM_reg_rf_we         <= 0;
             EX_MEM_reg_data_size     <= 0;
             EX_MEM_reg_WB_sel        <= 0;
+
+            EX_MEM_isflushed         <= 0;
         end else if (EX_MEM_flush) begin //Basically the same as reset, let's still keep it
             EX_MEM_reg_instr         <= 32'h0000_0013; //NOP
             EX_MEM_reg_pc            <= 0;
@@ -301,6 +329,8 @@ module riscv_multicycle #(
             EX_MEM_reg_rf_we         <= 0;
             EX_MEM_reg_data_size     <= 0;
             EX_MEM_reg_WB_sel        <= 0;
+
+            EX_MEM_isflushed         <= 1;
         end else if (EX_MEM_stall) begin
             EX_MEM_reg_instr         <= EX_MEM_reg_instr; //Hold the previous value (is this synthesizable?)
             EX_MEM_reg_pc            <= EX_MEM_reg_pc;
@@ -309,8 +339,10 @@ module riscv_multicycle #(
             EX_MEM_reg_data_rs2      <= EX_MEM_reg_data_rs2;
             EX_MEM_reg_we            <= EX_MEM_reg_we;
             EX_MEM_reg_rf_we         <= EX_MEM_reg_rf_we;
-            EX_MEM_reg_data_size     <= ID_EX_reg_data_size;
-            EX_MEM_reg_WB_sel        <= ID_EX_reg_WB_sel;
+            EX_MEM_reg_data_size     <= EX_MEM_reg_data_size;
+            EX_MEM_reg_WB_sel        <= EX_MEM_reg_WB_sel;
+
+            EX_MEM_isflushed         <= EX_MEM_isflushed;
         end else begin
             EX_MEM_reg_instr         <= ID_EX_reg_instr; 
             EX_MEM_reg_pc            <= ID_EX_reg_pc;
@@ -321,12 +353,16 @@ module riscv_multicycle #(
             EX_MEM_reg_rf_we         <= ID_EX_reg_rf_we;
             EX_MEM_reg_data_size     <= ID_EX_reg_data_size;
             EX_MEM_reg_WB_sel        <= ID_EX_reg_WB_sel;
+
+            EX_MEM_isflushed         <= ID_EX_isflushed;
         end
     end
 // MEMORY (MEM) STAGE
     //Stage internal signals, instantiations and assignments (and those that come from the previous stage)
     logic [31:0] MEM_alu_out;
     logic [31:0] MEM_data_rs2;
+    logic [4:0] MEM_rd;
+    logic MEM_rf_we;
     logic MEM_we;
     logic [2:0] MEM_data_size;
     // Memory data signals
@@ -336,6 +372,8 @@ module riscv_multicycle #(
 
     assign MEM_alu_out          = EX_MEM_reg_alu_out;
     assign MEM_data_rs2         = EX_MEM_reg_data_rs2;
+    assign MEM_rd               = EX_MEM_reg_rd;
+    assign MEM_rf_we            = EX_MEM_reg_rf_we;
     assign MEM_we               = EX_MEM_reg_we;
     assign MEM_data_size        = EX_MEM_reg_data_size;
 
@@ -371,11 +409,12 @@ module riscv_multicycle #(
 
     logic MEM_WB_flush;
     logic MEM_WB_stall;
+    logic MEM_WB_isflushed;
 
     //Pipeline register assignments
     always_ff @(posedge clk_i or negedge rstn_i) begin
         if(!rstn_i)begin
-            MEM_WB_instr            <= 32'h0000_0013; //NOP
+            MEM_WB_instr            <= 0;
             MEM_WB_reg_pc           <= 0;
             MEM_WB_reg_rd           <= 0;
             MEM_WB_reg_data_out_rf  <= 0;
@@ -383,6 +422,8 @@ module riscv_multicycle #(
             MEM_WB_reg_we           <= 0;
             MEM_WB_reg_rf_we        <= 0;
             MEM_WB_reg_WB_sel       <= 0;
+
+            MEM_WB_isflushed        <= 0;
         end else if (MEM_WB_flush) begin //Basically the same as reset, let's still keep it
             MEM_WB_instr            <= 32'h0000_0013; //NOP
             MEM_WB_reg_pc           <= 0;
@@ -392,6 +433,8 @@ module riscv_multicycle #(
             MEM_WB_reg_we           <= 0;
             MEM_WB_reg_rf_we        <= 0;
             MEM_WB_reg_WB_sel       <= 0;
+
+            MEM_WB_isflushed        <= 1;
         end else if (MEM_WB_stall) begin
             MEM_WB_instr            <= MEM_WB_instr; //Hold the previous value (is this synthesizable?)
             MEM_WB_reg_pc           <= MEM_WB_reg_pc;
@@ -400,16 +443,20 @@ module riscv_multicycle #(
             MEM_WB_reg_alu_out      <= MEM_WB_reg_alu_out;
             MEM_WB_reg_we           <= MEM_WB_reg_we;
             MEM_WB_reg_rf_we        <= MEM_WB_reg_rf_we;
-            MEM_WB_reg_WB_sel       <= EX_MEM_reg_WB_sel;
+            MEM_WB_reg_WB_sel       <= MEM_WB_reg_WB_sel;
+
+            MEM_WB_isflushed        <= MEM_WB_isflushed;
         end else begin
             MEM_WB_instr            <= EX_MEM_reg_instr; 
             MEM_WB_reg_pc           <= EX_MEM_reg_pc;
-            MEM_WB_reg_rd           <= EX_MEM_reg_rd;
+            MEM_WB_reg_rd           <= MEM_rd;
             MEM_WB_reg_data_out_rf  <= data_out_rf; 
             MEM_WB_reg_alu_out      <= MEM_alu_out;
             MEM_WB_reg_we           <= MEM_we;
-            MEM_WB_reg_rf_we        <= EX_MEM_reg_rf_we;
+            MEM_WB_reg_rf_we        <= MEM_rf_we;
             MEM_WB_reg_WB_sel       <= EX_MEM_reg_WB_sel;
+
+            MEM_WB_isflushed        <= EX_MEM_isflushed;
         end 
     end
 // WRITE BACK (WB) STAGE
@@ -417,7 +464,7 @@ module riscv_multicycle #(
     logic [31:0] WB_alu_out;
     logic [31:0] WB_data_out_rf;
     logic WB_WB_sel;
-
+    logic WB_instr_valid;
     logic [31:0] WB_instr, WB_pc;
 
     assign WB_alu_out               = MEM_WB_reg_alu_out;
@@ -431,17 +478,36 @@ module riscv_multicycle #(
     assign WB_instr                 = MEM_WB_instr;
     assign WB_pc                    = MEM_WB_reg_pc;
 
+    assign WB_instr_valid           = ~MEM_WB_isflushed;
 //INSTANTIATION OF THE PIPELINE CONTROL UNIT (HAZARD/FORWARDING)
 
 //Temporarily, let's give 0 for all flush and stall signals
-    assign IF_ID_flush          = 0;
-    assign IF_ID_stall          = 0;
-    assign ID_EX_flush          = 0;
-    assign ID_EX_stall          = 0;
-    assign EX_MEM_flush         = 0;
-    assign EX_MEM_stall         = 0;
-    assign MEM_WB_flush         = 0;
-    assign MEM_WB_stall         = 0;
+    pipeline_controller pipeline_controller (
+        .MEM_rf_we(MEM_rf_we),
+        .WB_rf_we(WB_rf_we),
+        .EX_rs1(EX_rs1),
+        .EX_rs2(EX_rs2),
+        .ID_rs1(ctrl_rs1),
+        .ID_rs2(ctrl_rs2),
+        .EX_rd(EX_rd),
+        .MEM_rd(MEM_rd),
+        .WB_rd(WB_rd),
+        .EX_B(EX_B),
+        .EX_J(EX_J),
+        .alu_out_zero(EX_alu_out[0]),
+        .ID_opcode(IF_ID_reg_instr[6:0]), //This is the opcode from the instruction in the ID stage
+        .EX_opcode(ID_EX_reg_instr[6:0]), //This is the opcode from the instruction in the EX stage
+        .IF_ID_flush(IF_ID_flush),
+        .IF_ID_stall(IF_ID_stall),
+        .ID_EX_stall(ID_EX_stall),
+        .ID_EX_flush(ID_EX_flush),
+        .EX_MEM_stall(EX_MEM_stall),
+        .EX_MEM_flush(EX_MEM_flush),
+        .MEM_WB_stall(MEM_WB_stall),
+        .MEM_WB_flush(MEM_WB_flush),
+        .alu_in_A_fwd(alu_in_A_fwd),
+        .alu_in_B_fwd(alu_in_B_fwd)
+    );
 
 
 //OUTPUT SIGNAL ASSIGNMENTS
@@ -456,6 +522,6 @@ module riscv_multicycle #(
 
     assign data_o = dmem.memory[addr_i>>2]; //I believe this is what the testbench does
 
-    assign update_o = ~clk_i; //I don't know how correct this is, might need to replace with a signal that travels through the pipeline, maybe use a "dummy" signal for pipelines that get flushed
+    assign update_o = ((WB_instr != 32'h0) && WB_instr_valid) && ~clk_i; //If instruction is 0 (NOT NOP), then it's due to reset signal, and these aren't valid either. We also want to only update once per clock cycle
 
 endmodule

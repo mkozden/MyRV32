@@ -34,12 +34,12 @@ module tb ();
     forever begin
       if (update) begin
         if (reg_addr == 0) begin
-          $fwrite(file_pointer, "0x%8h (0x%8h)", pc, instr);
+          $fwrite(file_pointer, "0x%8h (0x%8h) ", pc, instr);
         end else begin
           if (reg_addr > 9) begin
-            $fwrite(file_pointer, "0x%8h (0x%8h) x%0d 0x%8h", pc, instr, reg_addr, reg_data);
+            $fwrite(file_pointer, "0x%8h (0x%8h) x%0d 0x%8h ", pc, instr, reg_addr, reg_data);
           end else begin
-            $fwrite(file_pointer, "0x%8h (0x%8h) x%0d  0x%8h", pc, instr, reg_addr, reg_data);
+            $fwrite(file_pointer, "0x%8h (0x%8h) x%0d  0x%8h ", pc, instr, reg_addr, reg_data);
           end
         end
         if (mem_wrt == 1) begin

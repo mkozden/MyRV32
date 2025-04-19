@@ -399,6 +399,7 @@ module riscv_multicycle #(
 
     //Pipeline registers
     reg [31:0] MEM_WB_instr; //To obtain the retired instruction at the end of the pipeline
+    reg [31:0] MEM_WB_data_out_mem; //Only for debugging 
     reg [31:0] MEM_WB_reg_pc;
     reg [4:0] MEM_WB_reg_rd;
     reg [31:0] MEM_WB_reg_data_out_rf;
@@ -415,6 +416,7 @@ module riscv_multicycle #(
     always_ff @(posedge clk_i or negedge rstn_i) begin
         if(!rstn_i)begin
             MEM_WB_instr            <= 0;
+            MEM_WB_data_out_mem     <= 0;
             MEM_WB_reg_pc           <= 0;
             MEM_WB_reg_rd           <= 0;
             MEM_WB_reg_data_out_rf  <= 0;
@@ -426,6 +428,7 @@ module riscv_multicycle #(
             MEM_WB_isflushed        <= 0;
         end else if (MEM_WB_flush) begin //Basically the same as reset, let's still keep it
             MEM_WB_instr            <= 32'h0000_0013; //NOP
+            MEM_WB_data_out_mem     <= 0;
             MEM_WB_reg_pc           <= 0;
             MEM_WB_reg_rd           <= 0;
             MEM_WB_reg_data_out_rf  <= 0;
@@ -437,6 +440,7 @@ module riscv_multicycle #(
             MEM_WB_isflushed        <= 1;
         end else if (MEM_WB_stall) begin
             MEM_WB_instr            <= MEM_WB_instr; //Hold the previous value (is this synthesizable?)
+            MEM_WB_data_out_mem     <= MEM_WB_data_out_mem;
             MEM_WB_reg_pc           <= MEM_WB_reg_pc;
             MEM_WB_reg_rd           <= MEM_WB_reg_rd;
             MEM_WB_reg_data_out_rf  <= MEM_WB_reg_data_out_rf;
@@ -447,7 +451,8 @@ module riscv_multicycle #(
 
             MEM_WB_isflushed        <= MEM_WB_isflushed;
         end else begin
-            MEM_WB_instr            <= EX_MEM_reg_instr; 
+            MEM_WB_instr            <= EX_MEM_reg_instr;
+            MEM_WB_data_out_mem     <= data_out_mem;
             MEM_WB_reg_pc           <= EX_MEM_reg_pc;
             MEM_WB_reg_rd           <= MEM_rd;
             MEM_WB_reg_data_out_rf  <= data_out_rf; 
@@ -463,6 +468,8 @@ module riscv_multicycle #(
     //Stage internal signals, instantiations and assignments (and those that come from the previous stage)
     logic [31:0] WB_alu_out;
     logic [31:0] WB_data_out_rf;
+    logic [31:0] WB_data_out_mem;
+    logic WB_we;
     logic WB_WB_sel;
     logic WB_instr_valid;
     logic [31:0] WB_instr, WB_pc;
@@ -472,11 +479,13 @@ module riscv_multicycle #(
     assign WB_WB_sel                = MEM_WB_reg_WB_sel;
     assign WB_rd                    = MEM_WB_reg_rd;
     assign WB_rf_we                 = MEM_WB_reg_rf_we;
+    assign WB_we                    = MEM_WB_reg_we;
 
     assign WB_data_rd               = (WB_WB_sel) ? WB_data_out_rf : WB_alu_out; //TO THE REGISTER FILE, MODIFY SIGNALS ACCORDINGLY
 
     assign WB_instr                 = MEM_WB_instr;
     assign WB_pc                    = MEM_WB_reg_pc;
+    assign WB_data_out_mem          = MEM_WB_data_out_mem; //Only for debugging
 
     assign WB_instr_valid           = ~MEM_WB_isflushed;
 //INSTANTIATION OF THE PIPELINE CONTROL UNIT (HAZARD/FORWARDING)
@@ -512,9 +521,9 @@ module riscv_multicycle #(
 
 //OUTPUT SIGNAL ASSIGNMENTS
 
-    assign mem_data_o = {32{MEM_we}} & data_out_mem; //Return this only if memory is being written to
-    assign mem_addr_o = {32{MEM_we}} & MEM_alu_out;
-    assign mem_wrt_o = MEM_we;
+    assign mem_data_o = {32{WB_we}} & WB_data_out_mem; //Return this only if memory is being written to
+    assign mem_addr_o = {32{WB_we}} & WB_alu_out;
+    assign mem_wrt_o = WB_we;
     assign reg_data_o = {32{WB_rf_we}} & WB_data_rd; //Return this only if the register file is being written to
     assign reg_addr_o = {5{WB_rf_we}} & WB_rd;
     assign pc_o = WB_pc;

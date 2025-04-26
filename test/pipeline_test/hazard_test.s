@@ -27,3 +27,14 @@ done:
 nop
 nop
 nop
+lw x11, 0(x0) #Loading 1 from memory
+bne x11, x1, isnot_equal2 #Should stall because of load-use, but also flush because branch (?)
+lw x12, 20(x0)
+addi x12, x12, 0x1 #If not equal, set x12 to 1 (Doing it in this roundabout way to create a hazard)
+j done2
+isnot_equal2:
+addi x12, x0, 0x1 #We don't expect this result
+done2:
+nop
+nop
+nop

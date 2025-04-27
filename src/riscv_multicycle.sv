@@ -348,7 +348,7 @@ module riscv_multicycle #(
             EX_MEM_reg_pc            <= ID_EX_reg_pc;
             EX_MEM_reg_rd            <= ID_EX_reg_rd;
             EX_MEM_reg_alu_out       <= EX_alu_out;
-            EX_MEM_reg_data_rs2      <= EX_data_rs2;
+            EX_MEM_reg_data_rs2      <= data_rs2_fwd; //Might fix issue???
             EX_MEM_reg_we            <= ID_EX_reg_we;
             EX_MEM_reg_rf_we         <= ID_EX_reg_rf_we;
             EX_MEM_reg_data_size     <= ID_EX_reg_data_size;
@@ -378,6 +378,7 @@ module riscv_multicycle #(
     assign MEM_data_size        = EX_MEM_reg_data_size;
 
     LS_Unit LS (
+        .addr(MEM_alu_out),
         .data_in(MEM_data_rs2),
         .data_in_mem(data_in_mem),
         .data_size(MEM_data_size),
